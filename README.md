@@ -21,7 +21,7 @@ A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Qui
 
 Data comes from:
 
-- **Water temp** — the `nct6798` Super I/O chip's `AUXTIN3` sensor (matched by sysfs label, not hwmon index, so it survives reboots). This is board-specific: if you clone this for your own machine, you'll need to identify which `AUXTIN`/`SYSTIN` channel your coolant probe is wired to (see `stats.py`'s `temp_by_label` calls).
+- **Water temp** — the `asusec` chip's `T_Sensor` reading (matched by sysfs label, not hwmon index, so it survives reboots). `asusec` comes from the [`asus-ec-sensors`](https://github.com/zeule/asus-ec-sensors) kernel module, which reads ASUS motherboards' embedded controller directly — some coolant probes are wired to EC-only headers that never show up on the board's Super I/O chip (`nct6798`/`it87`/etc.) at all, so check both. This is board-specific either way: if you clone this for your own machine, verify which sensor your coolant probe actually is with a CPU load test — a real probe rises slowly and lags behind CPU temp changes by its thermal mass, while a floating/disconnected header stays perfectly flat. Don't trust the label name alone (see `stats.py`'s `temp_by_label` calls).
 - **CPU temp** — `coretemp`'s "Package id 0".
 - **GPU temp/usage** — `nvidia-smi`.
 - **CPU usage** — `/proc/stat` delta.
@@ -32,7 +32,7 @@ Data comes from:
 - Omarchy running on Hyprland
 - Python 3
 - `nvidia-smi` on `PATH` (NVIDIA GPU)
-- A motherboard sensor chip exposed under `/sys/class/hwmon/` for CPU/water temps
+- A motherboard sensor chip exposed under `/sys/class/hwmon/` for CPU/water temps — on some ASUS boards this requires loading the out-of-tree [`asus-ec-sensors`](https://github.com/zeule/asus-ec-sensors) module (via DKMS) and possibly adding a DMI board-name entry for your exact model if it's not already supported upstream
 
 ## Installation
 

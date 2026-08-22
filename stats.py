@@ -77,7 +77,7 @@ def gpu_stats():
 
 
 cpu_temp = temp_by_label("coretemp", "Package id 0")
-water_temp = temp_by_label("nct6798", "AUXTIN3")
+water_temp = temp_by_label("asusec", "T_Sensor")
 gpu_temp, gpu_pct = gpu_stats()
 cpu_pct = cpu_usage()
 ram_pct = mem_usage()
