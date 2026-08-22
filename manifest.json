@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "marionuevo.liquid-stats",
+  "name": "Liquid Stats",
+  "version": "1.0.0",
+  "author": "marionuevo",
+  "description": "Always-visible water/CPU/GPU temps and CPU/GPU/RAM/swap usage",
+  "license": "MIT",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "LiquidStats.qml"
+  },
+  "barWidget": {
+    "displayName": "Liquid Stats",
+    "description": "Water/CPU/GPU temps and CPU/GPU/RAM/swap usage, no popup",
+    "category": "System",
+    "allowMultiple": false
+  }
+}
