@@ -1,5 +1,10 @@
 # Liquid Stats
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+[![Omarchy](https://img.shields.io/badge/omarchy-shell%20plugin-1793d1)](https://omarchy.org)
+[![Platform](https://img.shields.io/badge/platform-Linux-blue)](https://github.com/marionuevo/omarchy-liquid-stats)
+[![NVIDIA GPU required](https://img.shields.io/badge/GPU-NVIDIA-76b900)](https://github.com/marionuevo/omarchy-liquid-stats)
+
 A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Quickshell). Shows water reservoir temp, CPU/GPU temp, and CPU/GPU/RAM/disk usage as a static row of icon+value pairs — no click target, no popup, just always-visible numbers.
 
 ![preview](preview.png)
