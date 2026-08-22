@@ -9,7 +9,7 @@ import qs.Commons
 // polled from stats.py every 2s.
 BarWidget {
     id: root
-    moduleName: "marionuevo.liquid-stats"
+    moduleName: "marionuevo.minimal-liquid-stats"
 
     property var stats: ({})
 
