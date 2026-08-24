@@ -38,7 +38,7 @@ Clicking the widget opens a picker with three modes. Measured on this build at
 
 | Mode | Top rad | Bottom rad | Pump |
 |------|---------|------------|------|
-| **Silent** | 688 rpm | 801 rpm | 834 rpm |
+| **Silent** | stopped | 693 rpm | 815 rpm |
 | **Normal** | 830 rpm | 979 rpm | 1755 rpm |
 | **Full** | 2205 rpm | 2166 rpm | 4770 rpm |
 
@@ -49,10 +49,20 @@ if this plugin — or the entire shell — dies while Silent is active, the fans
 keep following a curve instead of freezing at an idle duty while the loop
 heats up.
 
-Silent scales the radiator floors to 70% of the BIOS duty and pushes the knee
-5°C later; the pump's duty is never scaled down at all, only its ramp delayed
-by 6°C, and never below the BIOS floor. Every curve in every mode is pinned to
-100% by 55°C water, so a quiet mode still ramps out of trouble.
+**Silent is a studio mode**, for tracking audio — not a general-purpose
+profile. It stops the top radiator outright and drops the bottom to the
+lowest duty it will reliably hold, on the reasoning that these rads have far
+more capacity than idle desktop work needs. The pump keeps circulating, the
+bottom bank keeps the case at positive pressure, and the 55°C water pin still
+puts everything to 100% if the loop actually starts climbing. The pump's duty
+is never scaled down at all — only its ramp delayed by 6°C, and never below
+the BIOS floor.
+
+A fan stopped at 0 has to be able to start again, and interpolating up from
+zero would crawl through the dead band below the stall threshold — commanded
+on, not actually turning. So the top bank's curve *steps* from 0 straight to
+`MIN_FAN_PWM` rather than ramping. Verified: with the knee pulled below
+current water temp, the stopped bank restarts cleanly to ~920 rpm.
 
 Modes are runtime-only — the BIOS reapplies its own tables at boot, and the
 baseline that "Normal" restores is re-snapshotted each boot (keyed on
@@ -71,11 +81,10 @@ clamps at 127 as a net.
 
 **These fans stall below ~20% duty.** Both banks hold ~650 rpm at duty 51 and
 stop dead at 47, and a stalled PWM fan needs considerably more duty to restart
-than to keep turning. `MIN_FAN_PWM` (56) keeps Silent clear of that cliff with
-margin. Note that it is applied as a *shared lift* across both banks rather
-than a per-bank clamp: clamping each independently would flatten them onto the
-same duty and throw away the bottom-leads-top bias that keeps the case at
-positive pressure.
+than to keep turning. `MIN_FAN_PWM` (56) sits just above that cliff with a
+little margin, and is used for two things: the bottom bank's Silent floor, and
+the duty the stopped top bank steps to when it wakes. Stopping a fan on
+purpose is fine; leaving one commanded into the dead band is not.
 
 If you fork this for another board, re-measure both. Neither is documented
 anywhere useful, and the first one fails in the loudest possible way.

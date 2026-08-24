@@ -43,9 +43,9 @@ MAX_POINT_TEMP = 127
 # little margin over the measured cliff for dust and bearing wear.
 MIN_FAN_PWM = 56
 
-# How far silent mode scales the radiator floors down before the stall floor
-# and the pressure bias are reapplied.
-RAD_FLOOR_SCALE = 0.70
+# How much later silent mode lets the loop get before the fans wake up.
+RAD_KNEE_SHIFT = 5
+PUMP_KNEE_SHIFT = 6
 
 # Whatever mode is on, water this hot means something is wrong: every curve
 # is pinned to 100% by here so a quiet mode still ramps out of trouble.
@@ -165,50 +165,43 @@ def pinned(points):
     return out
 
 
-def rad_lift(bios):
-    """How far both radiator floors must rise together to clear the stall.
+def silent_curve(bios, ch):
+    """Studio mode: top radiator stopped, bottom at its lowest stable duty.
 
-    Clamping each bank to MIN_FAN_PWM independently would flatten the two
-    onto the same duty and throw away the bottom-leads-top bias that keeps
-    the case at positive pressure. Lifting both by one shared offset keeps
-    the gap between them exactly as the BIOS set it.
-    """
-    scaled = []
-    for ch in (TOP, BOTTOM):
-        b = bios.get(str(ch)) or []
-        if b:
-            scaled.append(int(b[0][1] * RAD_FLOOR_SCALE))
-    if not scaled:
-        return 0
-    return max(0, MIN_FAN_PWM - min(scaled))
+    Built for tracking audio, where the rads have far more capacity than
+    idle desktop work needs. The pump keeps circulating, the bottom bank
+    keeps a trickle of air moving through the case, and the PANIC_TEMP pin
+    still puts everything to 100% if the loop actually starts climbing.
 
-
-def silent_curve(bios, ch, lift=0):
-    """Quieter floor and a later knee, derived from the BIOS curve.
-
-    Scaled off the BIOS values rather than hardcoded, so the bottom-leads-top
-    pressure bias set in BIOS survives the mode change instead of being
-    flattened by two arbitrary constants.
-
-    The pump is quietened only by delaying its ramp, never by cutting its
-    duty: its floor stays exactly what the BIOS asks for at idle, so silent
-    mode can never run the loop slower than the board itself already does.
+    Only the knee moves on the temperature axis — the tail points sit near
+    the register's 127 ceiling and shifting them overflows it (see
+    MAX_POINT_TEMP).
     """
     if not bios:
         return None
-    floor_scale = 1.0 if ch == PUMP else RAD_FLOOR_SCALE
-    knee_shift = 6 if ch == PUMP else 5
+
+    if ch == PUMP:
+        # Quietened by delaying the ramp, never by cutting duty: the floor
+        # stays exactly what the BIOS asks for at idle, so silent mode can
+        # never run the loop slower than the board itself already does.
+        out = [[t + PUMP_KNEE_SHIFT if t < PANIC_TEMP else t, v] for t, v in bios]
+        return pinned(out)
+
+    if ch == TOP:
+        # Off completely. The step to MIN_FAN_PWM is deliberate rather than a
+        # ramp: interpolating up from 0 would crawl through the dead band
+        # below the stall threshold, leaving the fans commanded-on but not
+        # actually turning. One step clears the threshold in a single move.
+        knee = bios[0][0] + RAD_KNEE_SHIFT
+        return pinned([[knee, 0], [knee + 1, MIN_FAN_PWM]] + [[t, v] for t, v in bios[2:]])
+
+    # BOTTOM: lowest duty that reliably spins, knee pushed later. Keeping this
+    # bank alive while the top is stopped also means the case stays firmly at
+    # positive pressure, which is the whole point of the BIOS bias.
     out = []
     for i, (t, v) in enumerate(bios):
-        # Only the knee moves. The tail points are already at 100% and sit
-        # near the register's 127 ceiling, so shifting them buys nothing and
-        # overflows the register into a full-speed lockup.
-        shifted = t + knee_shift if t < PANIC_TEMP else t
-        if i < 2:
-            value = int(v * floor_scale) + (0 if ch == PUMP else lift)
-        else:
-            value = v
-        out.append([shifted, value])
+        shifted = t + RAD_KNEE_SHIFT if t < PANIC_TEMP else t
+        out.append([shifted, MIN_FAN_PWM if i < 2 else v])
     return pinned(out)
 
 
@@ -224,13 +217,12 @@ def apply(mode):
     bios, state = baseline(base)
 
     ok = True
-    lift = rad_lift(bios) if mode == "silent" else 0
     for ch in (TOP, BOTTOM, PUMP):
         b = bios.get(str(ch)) or []
         if mode == "normal":
             points = b
         elif mode == "silent":
-            points = silent_curve(b, ch, lift)
+            points = silent_curve(b, ch)
         elif mode == "full":
             points = full_curve(b, ch)
         else:
