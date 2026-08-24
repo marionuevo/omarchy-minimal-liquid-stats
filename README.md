@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Linux-blue)](https://github.com/marionuevo/omarchy-minimal-liquid-stats)
 [![NVIDIA GPU required](https://img.shields.io/badge/GPU-NVIDIA-76b900)](https://github.com/marionuevo/omarchy-minimal-liquid-stats)
 
-A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Quickshell). Shows water reservoir temp, radiator fan RPM, CPU/GPU temp, and CPU/GPU/RAM/disk usage as a static row of icon+value pairs — no click target, no popup, just always-visible numbers.
+A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Quickshell). Shows water reservoir temp, pump and radiator fan RPM, CPU/GPU temp, and CPU/GPU/RAM/disk usage as a static row of icon+value pairs — no click target, no popup, just always-visible numbers.
 
 ![preview](preview.png)
 
@@ -14,6 +14,7 @@ A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Qui
 | Icon | Value |
 |------|-------|
 | 💧 water-thermometer | Liquid cooling reservoir temperature |
+| 🚰 water-pump | Pump RPM |
 | 🌀 fan | Top / bottom radiator fan bank RPM |
 | 🖥 microchip | CPU temp / CPU usage % |
 | 🎮 expansion-card | GPU temp / GPU usage % |
@@ -23,6 +24,7 @@ A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Qui
 Data comes from:
 
 - **Water temp** — the `asusec` chip's `T_Sensor` reading (matched by sysfs label, not hwmon index, so it survives reboots). `asusec` comes from the [`asus-ec-sensors`](https://github.com/zeule/asus-ec-sensors) kernel module, which reads ASUS motherboards' embedded controller directly — some coolant probes are wired to EC-only headers that never show up on the board's Super I/O chip (`nct6798`/`it87`/etc.) at all, so check both. This is board-specific either way: if you clone this for your own machine, verify which sensor your coolant probe actually is with a CPU load test — a real probe rises slowly and lags behind CPU temp changes by its thermal mass, while a floating/disconnected header stays perfectly flat. Don't trust the label name alone (see `stats.py`'s `temp_by_label` calls).
+- **Pump** — `nct6798`'s `fan7`. Tachometer-only; the pump runs at a fixed speed, so a sudden drop here means trouble.
 - **Radiator fans** — `nct6798`'s `fan1` and `fan3`, one per radiator (three fans daisy-chained to each header). This chip exposes no `fanN_label` files, so channels are read by fixed index — the index-to-header mapping is set by the board wiring and doesn't shuffle across boots, but it *is* board- and build-specific. To find yours, run `sensors` and change fan curves in BIOS one header at a time to see which channel moves.
 - **CPU temp** — `coretemp`'s "Package id 0".
 - **GPU temp/usage** — `nvidia-smi`.

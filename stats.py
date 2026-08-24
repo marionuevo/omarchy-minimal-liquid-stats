@@ -91,6 +91,7 @@ water_temp = temp_by_label("asusec", "T_Sensor")
 # nct6798 exposes no fan labels; channels map to fixed board headers.
 fan_top = fan_rpm("nct6798", 1)
 fan_bottom = fan_rpm("nct6798", 3)
+pump_rpm = fan_rpm("nct6798", 7)
 gpu_temp, gpu_pct = gpu_stats()
 cpu_pct = cpu_usage()
 ram_pct = mem_usage()
@@ -98,6 +99,7 @@ disk_pct = disk_usage()
 
 print(json.dumps({
     "water": water_temp,
+    "pump": pump_rpm,
     "fanTop": fan_top,
     "fanBottom": fan_bottom,
     "cpuTemp": cpu_temp,
