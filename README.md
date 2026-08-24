@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Linux-blue)](https://github.com/marionuevo/omarchy-minimal-liquid-stats)
 [![NVIDIA GPU required](https://img.shields.io/badge/GPU-NVIDIA-76b900)](https://github.com/marionuevo/omarchy-minimal-liquid-stats)
 
-A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Quickshell). Shows water reservoir temp, pump and radiator fan RPM, CPU/GPU temp, and CPU/GPU/RAM/disk usage as a static row of icon+value pairs — no click target, no popup, just always-visible numbers.
+A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Quickshell). Shows water reservoir temp, pump and radiator fan RPM, CPU/GPU temp, and CPU/GPU/RAM/disk usage as a static row of icon+value pairs — always-visible numbers, no gauges, no animation. Clicking opens a [fan mode picker](#fan-modes); the row itself stays a plain read-out.
 
 ![preview](preview.png)
 
@@ -33,44 +33,77 @@ Data comes from:
 
 ## Fan modes
 
-Clicking the widget opens a picker with three modes:
+Clicking the widget opens a picker with three modes. Measured on this build at
+34°C water:
 
-| Mode | Radiator fans | Pump |
-|------|---------------|------|
-| **Silent** | floors to ~70% of the BIOS duty, knee 5°C later | ramp delayed 6°C, duty never reduced |
-| **Normal** | the BIOS curves, exactly as captured at boot | same |
-| **Full** | 100% everywhere | 100% everywhere |
+| Mode | Top rad | Bottom rad | Pump |
+|------|---------|------------|------|
+| **Silent** | 688 rpm | 801 rpm | 834 rpm |
+| **Normal** | 830 rpm | 979 rpm | 1755 rpm |
+| **Full** | 2205 rpm | 2166 rpm | 4770 rpm |
 
 These rewrite the chip's **SmartFan IV curve tables** and leave `pwmN_enable`
 at `5`, rather than forcing a fixed duty cycle. That distinction is the whole
 safety argument: the board keeps regulating against water temp on its own, so
 if this plugin — or the entire shell — dies while Silent is active, the fans
 keep following a curve instead of freezing at an idle duty while the loop
-heats up. Two further guards: the pump's duty is never scaled down (only its
-ramp delayed, and never below the BIOS floor), and every curve in every mode
-is pinned to 100% by 55°C water, so a quiet mode still ramps out of trouble.
+heats up.
+
+Silent scales the radiator floors to 70% of the BIOS duty and pushes the knee
+5°C later; the pump's duty is never scaled down at all, only its ramp delayed
+by 6°C, and never below the BIOS floor. Every curve in every mode is pinned to
+100% by 55°C water, so a quiet mode still ramps out of trouble.
 
 Modes are runtime-only — the BIOS reapplies its own tables at boot, and the
 baseline that "Normal" restores is re-snapshotted each boot (keyed on
 `boot_id`) so a mode left active before a reboot can never be mistaken for
 the BIOS default.
 
+### Two hardware limits this had to learn the hard way
+
+**The auto-point temperature register is 7-bit.** Write `130` and it wraps to
+`2`, so the chip concludes the loop is far past the top of the curve and slams
+every fan to 100% — while the driver's cached sysfs readback still cheerfully
+reports `130`. Verified here: `130` → full speed, `127` → correct. Silent mode
+originally shifted *every* point later, including the 125°C tail, and so went
+full blast instead of quiet. Only the knee moves now, and `MAX_POINT_TEMP`
+clamps at 127 as a net.
+
+**These fans stall below ~20% duty.** Both banks hold ~650 rpm at duty 51 and
+stop dead at 47, and a stalled PWM fan needs considerably more duty to restart
+than to keep turning. `MIN_FAN_PWM` (56) keeps Silent clear of that cliff with
+margin. Note that it is applied as a *shared lift* across both banks rather
+than a per-bank clamp: clamping each independently would flatten them onto the
+same duty and throw away the bottom-leads-top bias that keeps the case at
+positive pressure.
+
+If you fork this for another board, re-measure both. Neither is documented
+anywhere useful, and the first one fails in the loudest possible way.
+
 ### Granting write access
 
-The curve files are root-owned, so the widget shows the modes greyed out
-until a udev rule hands them to your user:
+The curve files are root-owned, so the picker stays greyed out (with an
+explanation in the panel) until a udev rule hands them to your user:
 
 ```sh
+sudo install -m 0755 udev/nct6798-fancurve-perms /usr/local/bin/
 sudo install -m 0644 udev/99-nct6798-fancurve.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
 sudo udevadm trigger --subsystem-match=hwmon --action=change
 ```
 
 The rule matches the chip by `name` rather than hwmon index (which is not
-stable across boots) and opens up only `pwm*`. **Edit the username in it
-first** — it is hardcoded. On a multi-user machine, prefer a `pkexec` helper
-over this; write access to `pwm*` means any process running as you can stop
-the pump.
+stable across boots) and opens up only `pwm*`. The helper chowns by **numeric
+uid** — resolving a username inside udev's sandbox silently fails on this
+system — so **edit `TARGET_UID` in it first**. It logs what it did under the
+`nct6798-fancurve` journal tag; check there if the picker stays greyed out:
+
+```sh
+journalctl -t nct6798-fancurve -b
+```
+
+On a multi-user machine, prefer a `pkexec` helper over this; write access to
+`pwm*` means any process running as you can stop the pump.
 
 ## Requirements
 

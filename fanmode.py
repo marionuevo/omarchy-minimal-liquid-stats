@@ -31,6 +31,22 @@ TOP, BOTTOM, PUMP = 1, 3, 7
 # negligible anyway.
 PUMP_FLOOR_PWM = 51  # 20%, the BIOS point-1 value on this board
 
+# The chip's auto-point temperature register is 7-bit. Write 130 and it wraps
+# to 2, so the chip decides the loop is far past the top of the curve and
+# slams every fan to 100% — while the driver's cached sysfs readback still
+# cheerfully reports 130. Verified on this board: 130 -> full speed, 127 -> fine.
+MAX_POINT_TEMP = 127
+
+# Measured on this build: both radiator banks hold ~650 rpm at duty 51 and
+# stall dead at 47. Stalled PWM fans need a good deal more duty to restart
+# than to keep turning, so "silent" must never park them below this — with a
+# little margin over the measured cliff for dust and bearing wear.
+MIN_FAN_PWM = 56
+
+# How far silent mode scales the radiator floors down before the stall floor
+# and the pressure bias are reapplied.
+RAD_FLOOR_SCALE = 0.70
+
 # Whatever mode is on, water this hot means something is wrong: every curve
 # is pinned to 100% by here so a quiet mode still ramps out of trouble.
 # Sits at the top of the BIOS curves' own ramp (they reach full at 55-60°C)
@@ -87,7 +103,7 @@ def write_curve(base, ch, points):
         # The chip interpolates between adjacent points, so a table whose
         # temperatures step backwards produces nonsense. Clamp rather than
         # reject: a shifted knee should never be able to invert an ordering.
-        temp = max(int(temp), last_temp)
+        temp = min(max(int(temp), last_temp), MAX_POINT_TEMP)
         last_temp = temp
         ok &= write_attr(base, "pwm%d_auto_point%d_temp" % (ch, i), int(temp) * 1000)
         ok &= write_attr(base, "pwm%d_auto_point%d_pwm" % (ch, i), pwm)
@@ -149,7 +165,25 @@ def pinned(points):
     return out
 
 
-def silent_curve(bios, ch):
+def rad_lift(bios):
+    """How far both radiator floors must rise together to clear the stall.
+
+    Clamping each bank to MIN_FAN_PWM independently would flatten the two
+    onto the same duty and throw away the bottom-leads-top bias that keeps
+    the case at positive pressure. Lifting both by one shared offset keeps
+    the gap between them exactly as the BIOS set it.
+    """
+    scaled = []
+    for ch in (TOP, BOTTOM):
+        b = bios.get(str(ch)) or []
+        if b:
+            scaled.append(int(b[0][1] * RAD_FLOOR_SCALE))
+    if not scaled:
+        return 0
+    return max(0, MIN_FAN_PWM - min(scaled))
+
+
+def silent_curve(bios, ch, lift=0):
     """Quieter floor and a later knee, derived from the BIOS curve.
 
     Scaled off the BIOS values rather than hardcoded, so the bottom-leads-top
@@ -162,11 +196,19 @@ def silent_curve(bios, ch):
     """
     if not bios:
         return None
-    floor_scale = 1.0 if ch == PUMP else 0.70
+    floor_scale = 1.0 if ch == PUMP else RAD_FLOOR_SCALE
     knee_shift = 6 if ch == PUMP else 5
     out = []
     for i, (t, v) in enumerate(bios):
-        out.append([t + knee_shift, int(v * floor_scale) if i < 2 else v])
+        # Only the knee moves. The tail points are already at 100% and sit
+        # near the register's 127 ceiling, so shifting them buys nothing and
+        # overflows the register into a full-speed lockup.
+        shifted = t + knee_shift if t < PANIC_TEMP else t
+        if i < 2:
+            value = int(v * floor_scale) + (0 if ch == PUMP else lift)
+        else:
+            value = v
+        out.append([shifted, value])
     return pinned(out)
 
 
@@ -182,12 +224,13 @@ def apply(mode):
     bios, state = baseline(base)
 
     ok = True
+    lift = rad_lift(bios) if mode == "silent" else 0
     for ch in (TOP, BOTTOM, PUMP):
         b = bios.get(str(ch)) or []
         if mode == "normal":
             points = b
         elif mode == "silent":
-            points = silent_curve(b, ch)
+            points = silent_curve(b, ch, lift)
         elif mode == "full":
             points = full_curve(b, ch)
         else:

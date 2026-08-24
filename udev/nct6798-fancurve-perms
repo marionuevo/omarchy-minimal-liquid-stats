@@ -1,0 +1,40 @@
+#!/bin/sh
+# Hand the nct6798 SmartFan IV curve controls to the desktop user, so the
+# minimal-liquid-stats bar widget can switch fan modes without a root helper.
+#
+# Invoked from udev (99-nct6798-fancurve.rules) with the device directory,
+# and directly by the installer for the current boot. Uses a numeric uid so
+# nothing depends on NSS resolving inside udev's sandbox, and logs what it
+# did so a silent failure is visible in the journal.
+TARGET_UID=1000
+TAG=nct6798-fancurve
+
+DIR="$1"
+[ -n "$DIR" ] || DIR="/sys$DEVPATH"
+case "$DIR" in
+  /sys/*) ;;
+  *) DIR="/sys$DIR" ;;
+esac
+
+if [ ! -d "$DIR" ]; then
+  logger -t "$TAG" "device dir not found: $DIR"
+  exit 0
+fi
+
+granted=0
+failed=0
+for f in "$DIR"/pwm[0-9] \
+         "$DIR"/pwm[0-9]_enable \
+         "$DIR"/pwm[0-9]_auto_point[0-9]_pwm \
+         "$DIR"/pwm[0-9]_auto_point[0-9]_temp; do
+  [ -e "$f" ] || continue
+  if chown "$TARGET_UID" "$f" 2>/dev/null; then
+    granted=$((granted + 1))
+  else
+    failed=$((failed + 1))
+    logger -t "$TAG" "chown failed: $f"
+  fi
+done
+
+logger -t "$TAG" "granted uid $TARGET_UID on $granted attrs ($failed failed) in $DIR"
+exit 0

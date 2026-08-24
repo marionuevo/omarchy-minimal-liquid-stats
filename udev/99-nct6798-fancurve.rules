@@ -2,6 +2,6 @@
 # minimal-liquid-stats bar widget can switch fan modes without a root helper.
 #
 # Matched by chip name rather than hwmon index — the index is not stable
-# across boots. Only pwm* is opened up; everything else stays root-only.
+# across boots. The helper opens up only pwm*; everything else stays root-only.
 ACTION=="add|change", SUBSYSTEM=="hwmon", ATTR{name}=="nct6798", \
-  RUN+="/bin/sh -c 'chown marionuevo /sys%p/pwm[0-9] /sys%p/pwm[0-9]_enable /sys%p/pwm[0-9]_auto_point[0-9]_pwm /sys%p/pwm[0-9]_auto_point[0-9]_temp 2>/dev/null || true'"
+  RUN+="/usr/local/bin/nct6798-fancurve-perms /sys%p"
