@@ -33,6 +33,8 @@ Data comes from:
 
 ## Fan modes
 
+![fan mode picker](fan-modes.png)
+
 Clicking the widget opens a picker with three modes. Measured on this build at
 34°C water:
 
