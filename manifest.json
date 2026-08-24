@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "marionuevo.minimal-liquid-stats",
   "name": "Minimal Liquid Stats",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "marionuevo",
-  "description": "Always-visible water/CPU/GPU temps and CPU/GPU/RAM/disk usage",
+  "description": "Always-visible water/CPU/GPU temps, pump and fan RPM, with a fan mode picker",
   "license": "MIT",
   "kinds": [
     "bar-widget"
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Minimal Liquid Stats",
-    "description": "Water/CPU/GPU temps and CPU/GPU/RAM/disk usage, no popup",
+    "description": "Water/CPU/GPU temps, pump and fan RPM, click for fan modes",
     "category": "System",
     "allowMultiple": false
   }
