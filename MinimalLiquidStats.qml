@@ -19,6 +19,7 @@ BarWidget {
 
     readonly property string displayText:
         "󱪅 " + fmt(stats.water, "°C") + "  " +
+        "󰈐 " + fmt(stats.fanTop, "") + "/" + fmt(stats.fanBottom, "") + "  " +
         " " + fmt(stats.cpuTemp, "°C") + "/" + fmt(stats.cpu, "%") + "  " +
         "󰢮 " + fmt(stats.gpuTemp, "°C") + "/" + fmt(stats.gpu, "%") + "  " +
         " " + fmt(stats.ram, "%") + "  " +

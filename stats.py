@@ -35,6 +35,16 @@ def temp_by_label(chip_name, label):
     return None
 
 
+def fan_rpm(chip_name, idx):
+    base = hwmon_chip(chip_name)
+    if not base:
+        return None
+    try:
+        return int(open(base + "/fan" + str(idx) + "_input").read().strip())
+    except OSError:
+        return None
+
+
 def cpu_usage():
     def read():
         with open("/proc/stat") as f:
@@ -78,6 +88,9 @@ def gpu_stats():
 
 cpu_temp = temp_by_label("coretemp", "Package id 0")
 water_temp = temp_by_label("asusec", "T_Sensor")
+# nct6798 exposes no fan labels; channels map to fixed board headers.
+fan_top = fan_rpm("nct6798", 1)
+fan_bottom = fan_rpm("nct6798", 3)
 gpu_temp, gpu_pct = gpu_stats()
 cpu_pct = cpu_usage()
 ram_pct = mem_usage()
@@ -85,6 +98,8 @@ disk_pct = disk_usage()
 
 print(json.dumps({
     "water": water_temp,
+    "fanTop": fan_top,
+    "fanBottom": fan_bottom,
     "cpuTemp": cpu_temp,
     "gpuTemp": gpu_temp,
     "cpu": cpu_pct,
