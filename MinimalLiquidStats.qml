@@ -27,7 +27,7 @@ BarWidget {
         "󰈐 " + fmt(stats.fanTop, "") + "/" + fmt(stats.fanBottom, "") + "  " +
         " " + fmt(stats.cpuTemp, "°C") + "/" + fmt(stats.cpu, "%") + "  " +
         "󰢮 " + fmt(stats.gpuTemp, "°C") + "/" + fmt(stats.gpu, "%") + "  " +
-        "b " + fmt(stats.ram, "%") + "  " +
+        "󰍛 " + fmt(stats.ram, "%") + "  " +
         "󰋊 " + fmt(stats.disk, "%")
 
     function parseStats(raw) {
