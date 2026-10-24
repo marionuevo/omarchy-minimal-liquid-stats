@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Linux-blue)](https://github.com/marionuevo/omarchy-minimal-liquid-stats)
 [![NVIDIA GPU required](https://img.shields.io/badge/GPU-NVIDIA-76b900)](https://github.com/marionuevo/omarchy-minimal-liquid-stats)
 
-A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Quickshell). Shows water reservoir temp, pump and radiator fan RPM, CPU/GPU temp, and CPU/GPU/RAM/disk usage as a static row of icon+value pairs — always-visible numbers, no gauges, no animation. Clicking opens a [fan mode picker](#fan-modes); the row itself stays a plain read-out.
+A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Quickshell). Shows water reservoir temp, pump and radiator fan RPM, CPU/GPU temp, and CPU/GPU/RAM/disk usage as a compact row of readings: each one an icon and two stacked rows, the number on top and a small meter below (outline = the whole range, fill = the current value). Water shows only its temperature; RAM and disk only their meter. Thin lines separate the readings, and every reading has a fixed width, so the widgets beside it never shift. Clicking opens a [fan mode picker](#fan-modes); the row itself stays a plain read-out.
 
 ![preview](preview.png)
 
@@ -14,12 +14,12 @@ A minimal `bar-widget` plugin for the [Omarchy](https://omarchy.org/) shell (Qui
 | Icon | Value |
 |------|-------|
 | 💧 water-thermometer | Liquid cooling reservoir temperature |
-| 🚰 water-pump | Pump RPM |
-| 🌀 fan | Top / bottom radiator fan bank RPM |
-| 🖥 microchip | CPU temp / CPU usage % |
-| 🎮 expansion-card | GPU temp / GPU usage % |
-| 💾 memory | RAM usage % |
-| 🗄 harddisk | Root filesystem (`/`) usage % |
+| 🚰 water-pump | Pump RPM, meter up to 4800 |
+| 🌀 fan | Top and bottom radiator fan bank RPM, meters up to 2200 |
+| 🖥 microchip | CPU temp, CPU usage meter |
+| 🎮 expansion-card | GPU temp, GPU usage meter |
+| 💾 memory | RAM usage meter |
+| 🗄 harddisk | Root filesystem (`/`) usage meter |
 
 Data comes from:
 
