@@ -127,6 +127,9 @@ BarWidget {
         property bool meter: true
         property var fill: null
         anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+        // The number's line box has more room below the meter than above
+        // the digits; a pixel down evens the margins to the bar's edges.
+        anchors.verticalCenterOffset: value !== "" && meter ? 1 : 0
 
         Text {
             visible: cell.value !== ""
